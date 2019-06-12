@@ -23,11 +23,17 @@ from ryu.lib.packet import ethernet
 from ryu.lib import hub
 from hostapd_socket import HostapdSocket
 
+import json
+
 ETH_TYPE_8021x = 0x888E
 '''
 Ligacao entre o hostapd_socket e o controlador acontece pelo dict 'portDict', o qual fornece
 as informacoes de liberacao do host e sua identidade!!!
+
+Estou acrescento um arquivo chamado portDict.json temporariamente!! Isso para nao precisar logar no hostapd
 '''
+
+arq_temporario = 'portDict.json'
 
 class ExampleSwitch13(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
@@ -54,6 +60,12 @@ class ExampleSwitch13(app_manager.RyuApp):
         actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
                                           ofproto.OFPCML_NO_BUFFER)]
         self.add_flow(datapath, 0, match, actions)
+
+        #Adicionando manualmente o hosts liberados atraves do arquivo portDict.json
+        with open(arq_temporario) as f:
+            data = json.load(f)
+        self.portDict = data
+
 
     def add_flow(self, datapath, priority, match, actions, timeout=0):
         ofproto = datapath.ofproto
@@ -87,6 +99,8 @@ class ExampleSwitch13(app_manager.RyuApp):
         src = eth_pkt.src
         dst = eth_pkt.dst
 
+
+        #print(self.portDict)
 
         if eth_pkt.ethertype == ETH_TYPE_8021x or src in self.portDict:
             self.logger.info("packet in %s %s %s %s", dpid, src, dst, in_port)
