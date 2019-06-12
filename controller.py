@@ -65,6 +65,9 @@ class ExampleSwitch13(app_manager.RyuApp):
         with open(arq_temporario) as f:
             data = json.load(f)
         self.portDict = data
+        dpid = datapath.id
+        if dpid == 1:
+            print(self.portDict)
 
 
     def add_flow(self, datapath, priority, match, actions, timeout=0):
