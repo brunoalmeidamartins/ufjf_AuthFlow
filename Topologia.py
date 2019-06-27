@@ -38,7 +38,9 @@ def myNetwork():
     # S3
     srv1 = net.addHost('srv1', cls=Host, ip='10.0.0.10', mac='00:00:00:00:00:10', defaultRoute=None)
     srv2 = net.addHost('srv2', cls=Host, ip='10.0.0.12', mac='00:00:00:00:00:12', defaultRoute=None)
-    auth = net.addHost('auth', inNamespace=False, cls=Host, ip='10.0.0.11', mac='00:00:00:00:00:11', defaultRoute=None)
+    #Voltar com essa linha novamente
+    #auth = net.addHost('auth', inNamespace=False, cls=Host, ip='10.0.0.11', mac='00:00:00:00:00:11', defaultRoute=None)
+    auth = net.addHost('auth', cls=Host, ip='10.0.0.11', mac='00:00:00:00:00:11', defaultRoute=None)
 
     info( '*** Add links\n')
     # S1
@@ -68,6 +70,8 @@ def myNetwork():
     net.get('s1').start([controller])
 
     info('*** Adicionando Rotas\n')
+    #Voltar com essas linhas novamente!!
+    '''
     h1.cmd('route add default dev h1-eth1')
     h2.cmd('route add default dev h2-eth1')
     h3.cmd('route add default dev h3-eth1')
@@ -75,7 +79,7 @@ def myNetwork():
     srv1.cmd('route add default dev srv1-eth1')
     srv2.cmd('route add default dev srv2-eth1')
     auth.cmd('route add default dev auth-eth1')
-
+    '''
 
     info( '*** Post configure switches and hosts\n')
 
