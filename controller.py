@@ -101,8 +101,8 @@ class ExampleSwitch13(app_manager.RyuApp):
         dpid = datapath.id
         if dpid == 1:
             print(self.portDict)
-
         #QoS
+
 
 
 
@@ -213,26 +213,41 @@ class ExampleSwitch13(app_manager.RyuApp):
                     if dpid in self.mac_to_port:
                         # print('\nExiste o dpid\n') #DEBUG
                         if pkt_ipv4.dst in self.ip_to_mac[dpid]:
-
-
                             '''
                             Fazer a verificacao do usuario e o destino 
                             Aqui ficara toda logica de regras (TCP)
                             Politica de acesso
                             '''
+                            if pkt_ipv4.src in TB.ips_servidores:
+                                lista_regras_ip_servidor = []
+                                # Pega todas as regras pertecentes aquele ip
+                                for i in range(0, len(TB.tabela_ip_porta)):
+                                    if  TB.tabela_ip_porta[0][i] == pkt_ipv4.src: # Servidor Origem
+                                        lista_regras_ip_servidor.append(TB.tabela_ip_porta[i])
+                                # Aplica as regras
+                                for regra in lista_regras_ip_servidor:
+                                    match1 = parser.OFPMatch(eth_type=0x0800, ipv4_dst=regra[0], ip_proto=6,
+                                                             tcp_dst=int(regra[1]))
+                                    actions1 = [parser.OFPActionSetQueue(int(self.filaQoS(regra[3])[0])),
+                                                parser.OFPActionOutput(port=out_port)]
+                                    self.add_flow(datapath, 40000, match1, actions1, 0, 28)
+                                    print('QoS: ' + self.filaQoS(regra[3])[1] + ' aplica na porta: ' + regra[
+                                        1] + ' com destino ao servidor!')
 
-                            for regra in TB.tabela_ip_porta:
-                                if int(regra[1]) == pkt_tcp.src_port:
-                                    qos = self.filaQoS(regra[3])
-                                    actions = [parser.OFPActionSetQueue(int(qos[0])), parser.OFPActionOutput(
-                                        port=self.mac_to_port[dpid][dst])]
-                                    self.add_flow(datapath, 1005, match, actions, 30, 27)
-                                    print('\nAdicionado a regra TCP com QoS')
-                                    print('Tudo que for de ' + str(pkt_ipv4.src) + ' para ' + str(
-                                        pkt_ipv4.dst) + ' na porta ' + str(
-                                        pkt_tcp.dst_port) + ' enqueue ' + qos[1])
-                                    print('')
-                                    break
+
+
+                            #for regra in TB.tabela_ip_porta:
+                            #    if int(regra[1]) == pkt_tcp.src_port:
+                            #        qos = self.filaQoS(regra[3])
+                            #        actions = [parser.OFPActionSetQueue(int(qos[0])), parser.OFPActionOutput(
+                            #            port=self.mac_to_port[dpid][dst])]
+                            #        self.add_flow(datapath, 1005, match, actions, 30, 27)
+                            #        print('\nAdicionado a regra TCP com QoS')
+                            #        print('Tudo que for de ' + str(pkt_ipv4.src) + ' para ' + str(
+                            #            pkt_ipv4.dst) + ' na porta ' + str(
+                            #            pkt_tcp.dst_port) + ' enqueue ' + qos[1])
+                            #        print('')
+                            #        break
                             return
                             '''
                             FIM das Regras de verificacao
@@ -260,6 +275,7 @@ class ExampleSwitch13(app_manager.RyuApp):
 
                 else: # Pacote sem QoS. Cai na fila Zero (0)
                     if dpid in self.mac_to_port:  # Existe o switch na tabela
+                        print(pkt_ipv4, 'Toaqui!!!\n')
                         if pkt_ipv4.dst in self.ip_to_mac[dpid]:
                             match = parser.OFPMatch(in_port=in_port, eth_type=0x0800, ipv4_src=pkt_ipv4.src,
                                                     ipv4_dst=pkt_ipv4.dst,

@@ -1,5 +1,8 @@
 ips_servidores = ['10.0.0.10', '10.0.0.12']
-macs_placas_servidores = ['00:00:00:00:00:10', '00:00:00:00:00:12']
+info_servidores = {
+                            ips_servidores[0]:'00:00:00:00:00:10',
+                            ips_servidores[1]:'00:00:00:00:00:12',
+                         }
 portas_servidores = ['"s3-eth1"', '"s3-eth2"']
 
 #ip_mac_servidor = [ip_servidor, mac_placa_servidor]
