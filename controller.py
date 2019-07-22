@@ -58,10 +58,20 @@ ETH_TYPE_8021x = 0x888E
 Ligacao entre o hostapd_socket e o controlador acontece pelo dict 'portDict', o qual fornece
 as informacoes de liberacao do host e sua identidade!!!
 
-Estou acrescento um arquivo chamado portDict.json temporariamente!! Isso para nao precisar logar no hostapd
+1 - Estou acrescento um arquivo chamado portDict.json temporariamente!! Isso para nao precisar logar no hostapd
+
+2 - Mapeamento estatico da rede para as regras iniciais do switch (EVENTO HANDLE SWITCH)
 '''
 
 arq_temporario = 'portDict.json'
+
+#Ultima posicao do vetor representa a saida padrao
+MAPEAMENTO_ESTATICO_REDE = {
+                            1: [('00:00:00:00:00:01', 1), ('00:00:00:00:00:02', 2), 3],
+                            2: [('00:00:00:00:00:03', 1), ('00:00:00:00:00:04', 2), 3],
+                            3: [('00:00:00:00:00:10', 1), ('00:00:00:00:00:11', 2),('00:00:00:00:00:12',3), ],
+                           }
+
 
 class ExampleSwitch13(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
@@ -78,6 +88,9 @@ class ExampleSwitch13(app_manager.RyuApp):
             self.logger, portDict=self.portDict)
         hub.spawn(self.hostapd_socket.start_socket)
 
+    '''
+    INICIO Eventos de Inicio de Topologia ou chegada de Switch
+    '''
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
         datapath = ev.msg.datapath
@@ -99,13 +112,62 @@ class ExampleSwitch13(app_manager.RyuApp):
             data = json.load(f)
         self.portDict = data
         dpid = datapath.id
+
+        #DEBUG
+        '''
         if dpid == 1:
             print(self.portDict)
+        '''
         #QoS
+        # Regra de QoS de acordo com a tabela passada
+        time.sleep(1)
+        print('')
+        TABELA_IP_PORTAS = TB.tabela_ip_porta
+        for regra in TABELA_IP_PORTAS:
+            print(regra)
+            # os.system('ovs-ofctl add-flow s1 priority=40000,dl_type=0x0800,nw_dst=' + regra[0] + ',nw_proto=17,tp_dst=' + regra[1] + ',actions=enqueue:' + regra[2] + ':' + self.filaQoS(regra[3]))
+            # os.system('ovs-ofctl add-flow s1 priority=40000,dl_type=0x0800,nw_dst=' + regra[0] + ',nw_proto=6,tp_dst=' + regra[1] + ',actions=enqueue:' + regra[2] + ':' + self.filaQoS(regra[3]))
+            match1 = parser.OFPMatch(eth_type=0x0800, ipv4_dst=regra[0], ip_proto=6, tcp_dst=int(regra[1]))
+            actions1 = [parser.OFPActionSetQueue(int(self.filaQoS(regra[3])[0])),
+                        parser.OFPActionOutput(port=regra[2])]
+            self.add_flow(datapath, 40000, match1, actions1, 0, 28)
+            print('QoS: ' + self.filaQoS(regra[3])[1] + ' aplica na porta: ' + regra[
+                1] + ' com destino ao servidor!')
+
+        # Tudo que for TCP envia para o controlador
+        match2 = parser.OFPMatch(eth_type=0x0800, ip_proto=6)
+        self.add_flow(datapath, 1000, match2, actions, 0, 29)
+        print('\nEventos de Entradas Prontos!!!\n')
+
+    '''
+    FIM Eventos de Inicio de Topologia ou chegada de Switch
+    '''
+
+    '''
+    Funcao de de Adicionar Regras
+    '''
+    def add_flow(self, datapath, priority, match, actions, idle_timeout=0, numero=0):
+        print('Numero DEBUG: '+ str(numero))
+        ofproto = datapath.ofproto
+        parser = datapath.ofproto_parser
+
+        # construct flow_mod message and send it.
+        inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS,
+                                             actions)]
+        if idle_timeout == 0:
+            mod = parser.OFPFlowMod(datapath=datapath, priority=priority,
+                                    match=match, instructions=inst)
+        else:
+            mod = parser.OFPFlowMod(datapath=datapath, priority=priority,
+                                    match=match, instructions=inst, idle_timeout=idle_timeout)
+        datapath.send_msg(mod)
+    '''
+    Funcao de de Adicionar Regras
+    '''
 
 
 
-
+    '''
     def add_flow(self, datapath, priority, match, actions, timeout=0):
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
@@ -117,6 +179,7 @@ class ExampleSwitch13(app_manager.RyuApp):
                                 match=match, instructions=inst,
                                 hard_timeout=timeout)
         datapath.send_msg(mod)
+    '''
 
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def _packet_in_handler(self, ev):
