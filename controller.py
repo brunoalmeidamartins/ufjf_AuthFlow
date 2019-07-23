@@ -50,7 +50,7 @@ ZERO_MAC = '00:00:00:00:00:00'
 path_home = os.getenv("HOME") #Captura o caminho da pasta HOME
 
 #Arquivos
-filename = path_home+'/Projeto_Prof_Alex_SDN/classes.conf'	#Arquivo de lista de objetos Classe
+filename = path_home+'/ufjf_AuthFlow/classes.conf'	#Arquivo de lista de objetos Classe
 
 
 ETH_TYPE_8021x = 0x888E
@@ -65,12 +65,8 @@ as informacoes de liberacao do host e sua identidade!!!
 
 arq_temporario = 'portDict.json'
 
-#Ultima posicao do vetor representa a saida padrao
-MAPEAMENTO_ESTATICO_REDE = {
-                            1: [('00:00:00:00:00:01', 1), ('00:00:00:00:00:02', 2), 3],
-                            2: [('00:00:00:00:00:03', 1), ('00:00:00:00:00:04', 2), 3],
-                            3: [('00:00:00:00:00:10', 1), ('00:00:00:00:00:11', 2),('00:00:00:00:00:12',3), ],
-                           }
+# MAC, Porta
+MAPEAMENTO_ESTATICO_REDE = TB.mapeamento_estatico_rede
 
 
 class ExampleSwitch13(app_manager.RyuApp):
@@ -128,8 +124,11 @@ class ExampleSwitch13(app_manager.RyuApp):
             # os.system('ovs-ofctl add-flow s1 priority=40000,dl_type=0x0800,nw_dst=' + regra[0] + ',nw_proto=17,tp_dst=' + regra[1] + ',actions=enqueue:' + regra[2] + ':' + self.filaQoS(regra[3]))
             # os.system('ovs-ofctl add-flow s1 priority=40000,dl_type=0x0800,nw_dst=' + regra[0] + ',nw_proto=6,tp_dst=' + regra[1] + ',actions=enqueue:' + regra[2] + ':' + self.filaQoS(regra[3]))
             match1 = parser.OFPMatch(eth_type=0x0800, ipv4_dst=regra[0], ip_proto=6, tcp_dst=int(regra[1]))
+            porta = MAPEAMENTO_ESTATICO_REDE[dpid][regra[0]][0]
+            #actions1 = [parser.OFPActionSetQueue(int(self.filaQoS(regra[3])[0])),
+            #           parser.OFPActionOutput(port=regra[2])]
             actions1 = [parser.OFPActionSetQueue(int(self.filaQoS(regra[3])[0])),
-                        parser.OFPActionOutput(port=regra[2])]
+                        parser.OFPActionOutput(port=porta)]
             self.add_flow(datapath, 40000, match1, actions1, 0, 28)
             print('QoS: ' + self.filaQoS(regra[3])[1] + ' aplica na porta: ' + regra[
                 1] + ' com destino ao servidor!')
@@ -147,7 +146,7 @@ class ExampleSwitch13(app_manager.RyuApp):
     Funcao de de Adicionar Regras
     '''
     def add_flow(self, datapath, priority, match, actions, idle_timeout=0, numero=0):
-        print('Numero DEBUG: '+ str(numero))
+        #print('Numero DEBUG: '+ str(numero))
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
 
@@ -411,7 +410,7 @@ class ExampleSwitch13(app_manager.RyuApp):
             if c.nome == nome:
                 fila_saida = c.id
                 nome_fila = c.nome
-        # print('Fila saida: ' + str(fila_saida))
+        #print('Fila saida: ' + str(fila_saida))
         return [str(fila_saida), nome_fila]
 
     '''
